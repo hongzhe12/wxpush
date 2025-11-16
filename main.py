@@ -4,7 +4,13 @@ import requests
 
 from config.conf import config_instance
 from logs.hz_log import logger
+import os
+import sys
 
+# 获取脚本自身所在的目录（绝对路径）
+script_dir = os.path.dirname(os.path.abspath(__file__))
+# 将工作路径切换到脚本所在目录
+os.chdir(script_dir)
 
 def get_weather_forecast(api_key: str):
     """查询天气预报（未来几天）"""
