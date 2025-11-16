@@ -104,8 +104,36 @@ def check_rain_in_next_three_days(area_name: str, casts: list) -> list:
 
 def send_enterprise_wechat_message(rainy_areas: list):
     """
-    发送企业微信消息（待实现）
+    发送企业微信消息
     """
+    if not rainy_areas:
+        print("没有下雨天气，无需发送消息")
+        return
+
+    # 构建格式化消息
+    message_lines = ["🌧️ 下雨天气提醒"]
+    message_lines.append("=" * 30)
+
+    # 按区域分组显示
+    areas_rain_info = {}
+    for rain_info in rainy_areas:
+        area = rain_info['area']
+        if area not in areas_rain_info:
+            areas_rain_info[area] = []
+        areas_rain_info[area].append(rain_info)
+
+    for area, rain_list in areas_rain_info.items():
+        message_lines.append(f"📍 {area}")
+        for rain_info in rain_list:
+            message_lines.append(f"   📅 {rain_info['day_type']}({rain_info['date']})")
+            message_lines.append(f"   ⛈️  天气: {rain_info['weather']}")
+        message_lines.append("")  # 空行分隔
+
+    # 添加总结信息
+    message_lines.append("💡 温馨提示：请记得带伞，注意出行安全！")
+
+    formatted_message = "\n".join(message_lines)
+
     corpid = config_instance['corpid']
     corpsecret = config_instance['corpsecret']
     agentid = config_instance['agentid']
@@ -127,7 +155,7 @@ def send_enterprise_wechat_message(rainy_areas: list):
         "msgtype": "text",
         "agentid": agentid,
         "text": {
-            "content": "".join(rainy_areas)
+            "content": formatted_message
         },
         "safe": 0
     }
