@@ -1,0 +1,10 @@
+API_KEY: <APIKEY> # 高德API
+areas:  # 天气地区
+- name: 上城区
+  adcode: '330102'
+- name: 萧山区
+  adcode: '330109'
+
+corpid : ""  # 企业ID
+corpsecret : ""  # 应用的Secret
+agentid : ""  # 应用ID
