@@ -2,7 +2,7 @@ import json
 import os
 
 import requests
-
+import time
 from config.conf import config_instance
 from logs.hz_log import logger
 
@@ -108,16 +108,14 @@ def check_rain_in_next_three_days(area_name: str, casts: list) -> list:
     return rainy_days
 
 
-def send_enterprise_wechat_message(rainy_areas: list):
+def build_rain_alert_message(rainy_areas: list) -> str:
     """
-    发送企业微信消息
+    构建下雨提醒消息内容（适配高德天气API）
     """
     if not rainy_areas:
-        print("没有下雨天气，无需发送消息")
-        return
+        return ""
 
-    # 构建格式化消息
-    message_lines = ["🌧️ 下雨天气提醒"]
+    message_lines = ["下雨天气提醒"]
     message_lines.append("=" * 30)
 
     # 按区域分组显示
@@ -129,16 +127,72 @@ def send_enterprise_wechat_message(rainy_areas: list):
         areas_rain_info[area].append(rain_info)
 
     for area, rain_list in areas_rain_info.items():
-        message_lines.append(f"📍 {area}")
+        message_lines.append(f"区域: {area}")
         for rain_info in rain_list:
-            message_lines.append(f"   📅 {rain_info['day_type']}({rain_info['date']})")
-            message_lines.append(f"   ⛈️  天气: {rain_info['weather']}")
-        message_lines.append("")  # 空行分隔
+            message_lines.append(f"  {rain_info['day_type']}({rain_info['date']})")
+            message_lines.append(f"  天气: {rain_info['weather']}")
+            
+            # 温度信息 - 高德API通常有temperature字段
+            if 'temperature' in rain_info:
+                message_lines.append(f"  温度: {rain_info['temperature']}°C")
+            
+            # 风向风力 - 高德API字段
+            if 'winddirection' in rain_info:
+                message_lines.append(f"  风向: {rain_info['winddirection']}")
+            elif 'winddirection' in rain_info.get('wind', {}):
+                message_lines.append(f"  风向: {rain_info['wind']['winddirection']}")
+            
+            if 'windpower' in rain_info:
+                message_lines.append(f"  风力: {rain_info['windpower']}级")
+            elif 'windpower' in rain_info.get('wind', {}):
+                message_lines.append(f"  风力: {rain_info['wind']['windpower']}级")
+            
+            # 湿度 - 高德API字段
+            if 'humidity' in rain_info:
+                message_lines.append(f"  湿度: {rain_info['humidity']}%")
+            
+            # 高德生活指数数据
+            if 'live_index' in rain_info:
+                indices = rain_info['live_index']
+                # 穿衣指数
+                if 'dressing' in indices:
+                    message_lines.append(f"  穿衣指数: {indices['dressing']}")
+                # 洗车指数（下雨天重要）
+                if 'car_washing' in indices:
+                    message_lines.append(f"  洗车指数: {indices['car_washing']}")
+                # 紫外线指数
+                if 'uv' in indices:
+                    message_lines.append(f"  紫外线: {indices['uv']}")
+                # 舒适度指数
+                if 'comfort' in indices:
+                    message_lines.append(f"  舒适度: {indices['comfort']}")
+            
+            message_lines.append("")  # 空行分隔
+        
+        message_lines.append("")  # 区域间空行
 
-    # 添加总结信息
-    message_lines.append("💡 温馨提示：请记得带伞，注意出行安全！")
+    # 添加总结和提醒
+    message_lines.append("温馨提示：请记得带伞，注意出行安全！")
+    
+    # 添加穿衣特别提醒
+    message_lines.append("穿衣建议：建议穿着保暖衣物，携带雨具")
+    
+    total_areas = len(areas_rain_info)
+    message_lines.append(f"本次提醒涵盖 {total_areas} 个区域")
 
-    formatted_message = "\n".join(message_lines)
+    return "\n".join(message_lines)
+
+
+def send_enterprise_wechat_message(rainy_areas: list):
+    """
+    发送企业微信消息
+    """
+    if not rainy_areas:
+        print("没有下雨天气，无需发送消息")
+        return True
+
+    # 构建消息内容
+    formatted_message = build_rain_alert_message(rainy_areas)
 
     corpid = config_instance['corpid']
     corpsecret = config_instance['corpsecret']
@@ -157,7 +211,7 @@ def send_enterprise_wechat_message(rainy_areas: list):
     msg_url = f"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={access_token}"
 
     data = {
-        "touser": "@all",  # 发送给所有人，也可以指定用户
+        "touser": "@all",
         "msgtype": "text",
         "agentid": agentid,
         "text": {
@@ -175,8 +229,6 @@ def send_enterprise_wechat_message(rainy_areas: list):
     else:
         logger.error(f"消息发送失败: {result}")
         return False
-
-
 # 使用示例
 if __name__ == "__main__":
     API_KEY = config_instance['API_KEY']
