@@ -150,7 +150,7 @@ config_module_dir = Path(__file__).resolve().parent
 # 项目根目录 = config/ 的父目录（wxpush/）
 project_root = config_module_dir.parent
 # 拼接配置文件路径
-DEFAULT_CONFIG_PATH = project_root / "config.yaml"
+DEFAULT_CONFIG_PATH = project_root / "config" / "config.yaml"
 
 # 全局实例（外部导入时直接使用）
 config_instance = Config(str(DEFAULT_CONFIG_PATH))
